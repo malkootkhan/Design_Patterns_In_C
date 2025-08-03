@@ -1,48 +1,60 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX_SIZE (10)
 
 typedef void (*callback)(void* context, void* data);
 
-typedef struct Observer {
+typedef struct ObserverNode {
     callback observerCallBack;
     void *context;
-}Observer, *pObserver;
+    struct ObserverNode *next;
+}ObserverNode, *pObserverNode;
 
 typedef struct Subject {
-    Observer observer[MAX_SIZE];
-    int count;
+    ObserverNode *head;
 }Subject, *pSubject;
-
+void subjectCreate(Subject **self);
 pSubject subjectConstructor(void)
 {
-    int i;
-    static Subject sub;
-    sub.count = 0;
-    for(i = 0; i < MAX_SIZE; i++) {
-        sub.observer[i].observerCallBack = NULL;
-        sub.observer[i].context = NULL;
+    pSubject sub = (pSubject)malloc(sizeof(Subject));
+    if(!sub) {
+        printf("subject object memory allocation failed\n");
+        return NULL;
     }
-    return &sub;
+    sub->head = NULL;
+    return sub;
 }
+
 
 void subjectAttached(pSubject self, callback observerFunction, void *ctx )
 {
-    if(self->count >= MAX_SIZE) {
-        printf("Valid observer count reached!\n");
-        return ;
+    pObserverNode newNode = (pObserverNode)malloc(sizeof(ObserverNode));
+    if(!newNode) {
+        printf("memory allocation for observer node failed\n");
+        return;
     }
-    self->observer[self->count].observerCallBack = observerFunction;
-    self->observer[self->count].context = ctx;
-    self->count++;
+    newNode->observerCallBack = observerFunction;
+    newNode->context = ctx;
+    newNode->next = self->head;
+    self->head = newNode;
+
 }
 void subjectNotifyAll(pSubject self, void *data)
 {
-    int i;
-    for(i = 0; i < self->count; i++){
-        if(self->observer[i].observerCallBack != NULL)
-            self->observer[i].observerCallBack(self->observer[i].context, data);
+    ObserverNode *tmp = self->head;
+    if(!tmp){
+        printf("There is no node\n");
+        return;
+    } 
+
+    while(tmp)
+    {
+        if(!tmp->observerCallBack){
+            printf("No Observer \n");
+            return;
+        }
+        tmp->observerCallBack(tmp->context, data);
+        tmp = tmp->next;
     }
 }
 void notifyImplementation(void *ctx, void *data)
@@ -52,28 +64,39 @@ void notifyImplementation(void *ctx, void *data)
 }
 void subjectDettach(pSubject self, callback cb, void *ctx)
 {
-    int i,j;
-    for(i = 0; i < self->count; i++)
-    {
-        if(self->observer[i].observerCallBack == cb && self->observer[i].context == ctx) {
-            for(j = i; j < self->count -1; j++){
-                self->observer[j].observerCallBack = self->observer[j+1].observerCallBack;
-                self->observer[j].context = self->observer[j+1].context;
-            }
-        self->count--;
-        break;
+    ObserverNode **tmp = &self->head;
+    if(!(*tmp)) return;
+
+    while(*tmp){
+        if((*tmp)->observerCallBack == cb && (*tmp)->context == ctx){
+            pObserverNode del = (*tmp);
+            (*tmp) = (*tmp)->next;
+            free(del);
+            return;        
         }
+        (*tmp) = (*tmp)->next;
     }
 }
 #include <string.h>
 int main()
 {
 
-    char ctex[] = "context-name!";
-    int id = 32;
-    pSubject subject = subjectConstructor();
-    subjectAttached(subject, notifyImplementation, (void*)ctex);
-    subjectNotifyAll(subject, (void*)&id);
+    char ctex1[] = "context1-name!";
+    int id1 = 32;
+    pSubject subject1 = subjectConstructor();
+    subjectAttached(subject1, notifyImplementation, (void*)ctex1);
+    subjectNotifyAll(subject1, (void*)&id1);
+
+    subjectDettach(subject1, notifyImplementation, ctex1);
+
+    char ctex2[] = "context2_name!";
+    int id2 = 499;
+    pSubject subject2 = subjectConstructor();
+    subjectAttached(subject2, notifyImplementation, (void*)ctex2);
+    subjectNotifyAll(subject2, (void*)&id2);
+
+    subjectDettach(subject2, notifyImplementation, ctex2);
+
     return 0;
 }
 
