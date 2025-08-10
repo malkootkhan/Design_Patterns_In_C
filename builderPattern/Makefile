@@ -1,8 +1,11 @@
 CC=gcc
 DFLAGS=-g
 
-all:	main.c
+main:	main.c
 	$(CC) $(DFLAGS) main.c -o app
+
+student: student.c
+	$(CC) $(DFLAGS) student.c -o app
 
 run: 
 	./app
